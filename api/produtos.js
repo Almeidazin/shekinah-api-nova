@@ -5,9 +5,8 @@ export default async function handler(req, res) {
     // Configurar CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Responder requisições OPTIONS (preflight)
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
@@ -25,16 +24,14 @@ export default async function handler(req, res) {
             return res.status(200).json(produtos);
         }
         
-        // POST - Adicionar novo produto (protegido)
+        // POST - Adicionar novo produto
         else if (req.method === 'POST') {
             const { senha, ...produto } = req.body;
             
-            // Verificar senha do admin
             if (senha !== 'shekinah2026') {
                 return res.status(401).json({ erro: 'Não autorizado' });
             }
 
-            // Gerar ID único
             const id = Date.now().toString();
             
             const result = await sql`
@@ -71,8 +68,7 @@ export default async function handler(req, res) {
                     description = ${produto.description},
                     price = ${produto.price},
                     tags = ${produto.tags},
-                    sku = ${produto.sku},
-                    updated_at = CURRENT_TIMESTAMP
+                    sku = ${produto.sku}
                 WHERE id = ${id}
                 RETURNING *
             `;
@@ -110,7 +106,7 @@ export default async function handler(req, res) {
         }
 
     } catch (error) {
-        console.error('Erro no banco de dados:', error);
+        console.error('Erro:', error);
         return res.status(500).json({ 
             erro: 'Erro interno do servidor',
             detalhes: error.message 
