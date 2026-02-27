@@ -1,20 +1,40 @@
-// api/produtos.js - Versão com Neon PostgreSQL
+// api/produtos.js - Versão adaptada para Vercel
 import { neon } from '@neondatabase/serverless';
 
+// Não precisa de dotenv no Vercel (as variáveis já estão no ambiente)
 export default async function handler(req, res) {
     // Configurar CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
+    // Responder requisições OPTIONS (preflight)
     if (req.method === 'OPTIONS') {
         return res.status(200).end();
     }
 
-    // Conectar ao Neon
-    const sql = neon(process.env.DATABASE_URL);
+    // Verificar se DATABASE_URL existe
+    if (!process.env.DATABASE_URL) {
+        console.error('DATABASE_URL não configurada');
+        return res.status(500).json({ 
+            erro: 'Banco de dados não configurado',
+            detalhes: 'Variável DATABASE_URL ausente no ambiente'
+        });
+    }
 
     try {
+        // Conectar ao Neon
+        const sql = neon(process.env.DATABASE_URL);
+        
+        // Testar conexão (opcional)
+        if (req.method === 'GET' && req.url === '/api/produtos/test') {
+            const result = await sql`SELECT version()`;
+            return res.status(200).json({ 
+                mensagem: 'Conectado ao Neon!',
+                versao: result[0].version 
+            });
+        }
+
         // GET - Listar todos os produtos
         if (req.method === 'GET') {
             const produtos = await sql`
@@ -106,10 +126,11 @@ export default async function handler(req, res) {
         }
 
     } catch (error) {
-        console.error('Erro:', error);
+        console.error('Erro detalhado:', error);
         return res.status(500).json({ 
             erro: 'Erro interno do servidor',
-            detalhes: error.message 
+            detalhes: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 }
